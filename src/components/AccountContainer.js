@@ -4,13 +4,37 @@ import Search from "./Search";
 import AddTransactionForm from "./AddTransactionForm";
 
 function AccountContainer() {
-  const [transaction, setTransaction] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch("http://localhost:8001/transactions?q=" + query)
-      .then((resp) => resp.json())
-      .then((data) => setTransaction(data))
+    setLoading(true);
+    setError(null);
+
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    fetch("http://localhost:8001/transactions?q=" + query, { signal })
+      .then((resp) => {
+        if (!resp.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return resp.json();
+      })
+      .then((data) => {
+        setTransactions(data);
+        setLoading(false);
+      })
+      .catch((error) => {
+        setError(error.message);
+        setLoading(false);
+      });
+
+    return () => {
+      controller.abort();
+    };
   }, [query]);
 
   function handleSearch(e) {
@@ -21,7 +45,13 @@ function AccountContainer() {
     <div>
       <Search handleSearch={handleSearch} />
       <AddTransactionForm />
-      <TransactionsList transactions={transaction} />
+      {loading ? (
+        <p>Loading...</p>
+      ) : error ? (
+        <p>Error: {error}</p>
+      ) : (
+        <TransactionsList transactions={transactions} />
+      )}
     </div>
   );
 }

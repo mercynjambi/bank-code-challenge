@@ -8,6 +8,7 @@ function AccountContainer() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "ascending" });
 
   useEffect(() => {
     setLoading(true);
@@ -41,6 +42,39 @@ function AccountContainer() {
     setQuery(e.target.value);
   }
 
+  function handleDelete(id) {
+    fetch(`http://localhost:8001/transactions/${id}`, {
+      method: "DELETE"
+    })
+    .then((resp) => {
+      if (!resp.ok) {
+        throw new Error("Failed to delete transaction");
+      }
+      setTransactions((prevTransactions) => prevTransactions.filter(transaction => transaction.id !== id));
+    })
+    .catch((error) => {
+      setError(error.message);
+    });
+  }
+
+  function handleSort(key) {
+    let direction = "ascending";
+    if (sortConfig.key === key && sortConfig.direction === "ascending") {
+      direction = "descending";
+    }
+    setSortConfig({ key, direction });
+  }
+
+  const sortedTransactions = [...transactions].sort((a, b) => {
+    if (a[sortConfig.key] < b[sortConfig.key]) {
+      return sortConfig.direction === "ascending" ? -1 : 1;
+    }
+    if (a[sortConfig.key] > b[sortConfig.key]) {
+      return sortConfig.direction === "ascending" ? 1 : -1;
+    }
+    return 0;
+  });
+
   return (
     <div>
       <Search handleSearch={handleSearch} />
@@ -50,10 +84,11 @@ function AccountContainer() {
       ) : error ? (
         <p>Error: {error}</p>
       ) : (
-        <TransactionsList transactions={transactions} />
+        <TransactionsList transactions={sortedTransactions} handleDelete={handleDelete} handleSort={handleSort} />
       )}
     </div>
   );
 }
 
 export default AccountContainer;
+
